@@ -37,11 +37,20 @@ function registerRoutes() {
   route("notfound", placeholder("Not found", "That page doesn't exist."));
 }
 
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  // Registration needs a secure context (https or localhost); ignore failures.
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+
 async function main() {
   registerRoutes();
   await initTheme();
   await getCatalogUrl(); // seed default on first run
   startRouter();
+  registerServiceWorker();
 }
 
 main();
