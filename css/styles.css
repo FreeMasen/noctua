@@ -18,8 +18,22 @@
   color-scheme: dark;
 }
 
+/* Light palette: shared by explicit choice and (when unset) the OS preference. */
+:root[data-theme="light"],
+:root.theme-light {
+  --bg: #f6f6fb;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #eeeef6;
+  --border: #dcdce8;
+  --text: #1c1d26;
+  --text-dim: #5c5d6e;
+  --accent: #6a58e6;
+  --shadow: 0 6px 24px rgba(20, 20, 40, 0.12);
+  color-scheme: light;
+}
+
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
+  :root:not([data-theme="dark"]):not([data-theme="light"]) {
     --bg: #f6f6fb;
     --bg-elev: #ffffff;
     --bg-elev-2: #eeeef6;
@@ -204,6 +218,7 @@ a { color: inherit; text-decoration: none; }
 .btn-primary { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
 .btn-quiet { background: transparent; border-color: transparent; color: var(--text-dim); }
 .btn-quiet:hover { color: var(--text); background: var(--bg-elev-2); }
+.btn.is-on { border-color: var(--accent); color: var(--accent); }
 
 /* ------------------------------------------------------------ states */
 
@@ -222,11 +237,12 @@ a { color: inherit; text-decoration: none; }
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .field span { font-size: 0.85rem; color: var(--text-dim); font-weight: 600; }
-.field input, .search-form input {
+.field input, .field select, .search-form input {
   font: inherit; padding: 10px 12px; border-radius: 8px;
   background: var(--bg); color: var(--text); border: 1px solid var(--border);
 }
-.field input:focus, .search-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field input:focus, .field select:focus, .search-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.settings-form { max-width: 520px; }
 
 /* -------------------------------------------------------------- modal */
 

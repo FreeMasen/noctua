@@ -10,6 +10,7 @@ import { mountView, renderLoading, renderError, toast } from "../ui/dom.js";
 import { setCover } from "../ui/covers.js";
 import { sanitizeHtml } from "../ui/sanitize.js";
 import { slugify, extForType, formatDate } from "../ui/format.js";
+import { getCatalogUrl, recordView, isBookmarked, toggleBookmark } from "../db/idb.js";
 
 const ACQ_LABELS = {
   download: "Download",
@@ -97,6 +98,25 @@ function buildActions(pub) {
   return frag;
 }
 
+/** A bookmark toggle whose label reflects (and updates) stored state. */
+function bookmarkButton(pub) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn";
+  const paint = (on) => {
+    btn.textContent = on ? "★ Bookmarked" : "☆ Bookmark";
+    btn.classList.toggle("is-on", on);
+  };
+  paint(false);
+  isBookmarked(pub.id).then(paint);
+  btn.addEventListener("click", async () => {
+    const on = await toggleBookmark(pub, await getCatalogUrl());
+    paint(on);
+    toast(on ? "Bookmarked." : "Bookmark removed.");
+  });
+  return btn;
+}
+
 function addFact(dl, key, value) {
   if (!value) return;
   const fact = cloneTemplate("tmpl-fact");
@@ -116,7 +136,9 @@ function renderDetail(pub) {
   addFact(facts, "Published", formatDate(pub.published || pub.modified));
   addFact(facts, "Publisher", pub.publisher);
 
-  root.querySelector('[data-slot="actions"]').appendChild(buildActions(pub));
+  const actions = root.querySelector('[data-slot="actions"]');
+  actions.appendChild(buildActions(pub));
+  if (pub.id) actions.appendChild(bookmarkButton(pub));
 
   const desc = root.querySelector('[data-slot="description"]');
   if (pub.description) desc.appendChild(sanitizeHtml(pub.description));
@@ -129,7 +151,9 @@ async function load(url) {
   renderLoading();
   try {
     const json = await fetchJson(url, { accept: MEDIA.publication });
-    mountView(renderDetail(parsePublication(json, url)));
+    const pub = parsePublication(json, url);
+    mountView(renderDetail(pub));
+    recordView(pub, await getCatalogUrl()); // fire-and-forget history entry
   } catch (err) {
     renderError(err && err.message ? err.message : String(err), () => load(url));
   }

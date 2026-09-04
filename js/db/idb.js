@@ -55,6 +55,10 @@ export async function idbDelete(store, key) {
   return wrap((await tx(store, "readwrite")).delete(key));
 }
 
+export async function idbClear(store) {
+  return wrap((await tx(store, "readwrite")).clear());
+}
+
 /**
  * Return all records in a store, optionally ordered by an index.
  * `direction` is an IDBCursor direction ("next" | "prev").
@@ -105,4 +109,79 @@ export async function getCatalogUrl() {
 
 export async function setCatalogUrl(url) {
   return setSetting("catalogUrl", url);
+}
+
+export async function getTheme() {
+  return getSetting("theme", "system");
+}
+
+export async function setTheme(theme) {
+  return setSetting("theme", theme);
+}
+
+// --------------------------------------------------- reading history
+
+/** Snapshot the fields we need to relink and display a publication later. */
+function snapshot(pub, catalogUrl) {
+  return {
+    id: pub.id,
+    title: pub.title,
+    author: pub.author || "",
+    coverHref: pub.coverHref || pub.fullCoverHref || null,
+    selfHref: pub.selfHref || null,
+    catalogUrl: catalogUrl || null,
+  };
+}
+
+/** Record (or refresh) a publication view in history. No-op without an id. */
+export async function recordView(pub, catalogUrl) {
+  if (!pub || !pub.id) return;
+  await idbPut("history", { ...snapshot(pub, catalogUrl), lastViewedAt: Date.now() });
+}
+
+export function getHistory() {
+  return idbGetAll("history", { index: "by_lastViewedAt", direction: "prev" });
+}
+
+export function removeHistory(id) {
+  return idbDelete("history", id);
+}
+
+export function clearHistory() {
+  return idbClear("history");
+}
+
+// -------------------------------------------------------- bookmarks
+
+export async function isBookmarked(id) {
+  if (!id) return false;
+  return Boolean(await idbGet("bookmarks", id));
+}
+
+export async function addBookmark(pub, catalogUrl) {
+  if (!pub || !pub.id) return;
+  await idbPut("bookmarks", { ...snapshot(pub, catalogUrl), createdAt: Date.now() });
+}
+
+export function removeBookmark(id) {
+  return idbDelete("bookmarks", id);
+}
+
+/** Toggle a bookmark; resolves to the new state (true = bookmarked). */
+export async function toggleBookmark(pub, catalogUrl) {
+  if (!pub || !pub.id) return false;
+  if (await isBookmarked(pub.id)) {
+    await removeBookmark(pub.id);
+    return false;
+  }
+  await addBookmark(pub, catalogUrl);
+  return true;
+}
+
+export function getBookmarks() {
+  return idbGetAll("bookmarks", { index: "by_createdAt", direction: "prev" });
+}
+
+export function clearBookmarks() {
+  return idbClear("bookmarks");
 }
