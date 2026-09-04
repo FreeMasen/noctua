@@ -5,6 +5,7 @@ import { getCatalogUrl, setCatalogUrl } from "./db/idb.js";
 import { mountView, toast } from "./ui/dom.js";
 import { homeView, feedView } from "./views/feed.js";
 import { publicationView } from "./views/publication.js";
+import { searchView } from "./views/search.js";
 
 // --- Placeholder views (replaced by real modules in later milestones) -------
 
@@ -58,7 +59,7 @@ function registerRoutes() {
   route("home", homeView);
   route("feed", feedView);
   route("pub", publicationView);
-  route("search", placeholder("Search", "Search arrives in a later milestone."));
+  route("search", searchView);
   route("bookmarks", placeholder("Bookmarks", "Bookmarks arrive in a later milestone."));
   route("history", placeholder("History", "History arrives in a later milestone."));
   route("reader", placeholder("Reader", "The reader arrives in the final milestone."));
