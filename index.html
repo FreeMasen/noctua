@@ -52,7 +52,11 @@
   <!-- A rendered feed: title + sections get appended into .feed-sections -->
   <template id="tmpl-feed">
     <section class="feed">
-      <h1 class="feed-title" data-slot="title"></h1>
+      <div class="feed-head">
+        <h1 class="feed-title" data-slot="title"></h1>
+        <button type="button" class="btn btn-quiet feed-refresh" data-slot="refresh"
+                title="Refresh from the server">⟳ Refresh</button>
+      </div>
       <p class="feed-subtitle" data-slot="subtitle" hidden></p>
       <div class="feed-sections" data-slot="sections"></div>
     </section>

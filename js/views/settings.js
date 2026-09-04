@@ -2,7 +2,7 @@
 
 import {
   getCatalogUrl, setCatalogUrl, getTheme, setTheme,
-  clearHistory, clearBookmarks,
+  clearHistory, clearBookmarks, clearCatalogCache,
 } from "../db/idb.js";
 import { clearCredential, isAuthenticated } from "../opds/auth.js";
 import { applyTheme } from "../ui/theme.js";
@@ -109,6 +109,7 @@ export async function settingsView() {
   dataHead.textContent = "Local data";
   section.appendChild(dataHead);
   section.appendChild(actionRow(
+    button("Clear cached catalog", { quiet: true, onClick: async () => { await clearCatalogCache(); toast("Cached catalog cleared — next load fetches fresh."); } }),
     button("Clear history", { quiet: true, onClick: async () => { await clearHistory(); toast("History cleared."); } }),
     button("Clear bookmarks", { quiet: true, onClick: async () => { await clearBookmarks(); toast("Bookmarks cleared."); } }),
   ));

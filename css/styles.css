@@ -102,6 +102,8 @@ a { color: inherit; text-decoration: none; }
   padding: clamp(16px, 3vw, 28px);
 }
 
+.feed-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.feed-refresh { flex: none; font-size: 0.85rem; }
 .feed-title { font-size: 1.6rem; margin: 0 0 4px; }
 .feed-subtitle { color: var(--text-dim); margin: 0 0 20px; }
 .feed-sections { display: flex; flex-direction: column; gap: 32px; }

@@ -4,7 +4,7 @@
 
 import { fetchFeed } from "../http.js";
 import { cloneTemplate, setText, show, slot } from "../ui/templates.js";
-import { mountView, renderLoading, renderError } from "../ui/dom.js";
+import { mountView, renderLoading, renderError, toast } from "../ui/dom.js";
 import { setCover } from "../ui/covers.js";
 import { feedHash, pubHash, pubRefHash, navigate } from "../router.js";
 import { stashPublication } from "../opds/pubcache.js";
@@ -125,10 +125,12 @@ function buildPager(feed) {
   return node;
 }
 
-function renderFeed(feed) {
+function renderFeed(feed, url) {
   const root = cloneTemplate("tmpl-feed");
   setText(root, "title", feed.title);
   if (feed.subtitle) show(setText(root, "subtitle", feed.subtitle), true);
+  const refreshBtn = root.querySelector('[data-slot="refresh"]');
+  refreshBtn.addEventListener("click", () => refreshFeed(url, refreshBtn));
   const sections = root.querySelector('[data-slot="sections"]');
 
   if (feed.navigation.length) {
@@ -151,9 +153,25 @@ function renderFeed(feed) {
 async function loadAndRender(url) {
   renderLoading();
   try {
-    mountView(renderFeed(await fetchFeed(url)));
+    mountView(renderFeed(await fetchFeed(url), url));
   } catch (err) {
     renderError(err && err.message ? err.message : String(err), () => loadAndRender(url));
+  }
+}
+
+// Re-fetch the current feed from the network (may prompt for login), refreshing
+// the cache. On failure the cached view is left in place — only a toast shows.
+async function refreshFeed(url, btn) {
+  btn.disabled = true;
+  btn.textContent = "Refreshing…";
+  try {
+    const feed = await fetchFeed(url, { refresh: true });
+    mountView(renderFeed(feed, url)); // fresh render recreates the button
+    toast("Refreshed from the server.");
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "⟳ Refresh";
+    toast(err && err.message ? err.message : "Refresh failed.", { error: true });
   }
 }
 

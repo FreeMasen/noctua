@@ -1,17 +1,13 @@
-// Cover images. Cross-origin <img> can't carry an Authorization header, so we
-// fetch the image with the session credential and hand the element an object
-// URL instead. Object URLs are cached per-session and reused.
+// Cover images. Cross-origin <img> can't carry an Authorization header, so for
+// an authed catalog we fetch the bytes with the credential and cache the blob
+// in IndexedDB. That cache is read first, so covers keep showing across sessions
+// without re-login (and offline). Object URLs are reused within a session.
 
 import { authHeader } from "../opds/auth.js";
+import { getCachedCover, putCachedCover } from "../db/idb.js";
 
-const cache = new Map(); // href -> objectURL
+const objectUrls = new Map(); // href -> object URL (session reuse)
 
-/**
- * Load a cover into a container that holds a `.pub-cover-fallback` child.
- * On success the fetched image is appended and the fallback hidden. On any
- * failure the fallback stays — this is intentionally non-interactive (it never
- * triggers a login prompt; feeds authenticate before covers are requested).
- */
 function attach(container, src) {
   const img = document.createElement("img");
   img.alt = "";
@@ -19,8 +15,7 @@ function attach(container, src) {
   img.loading = "lazy";
   const fallback = container.querySelector(".pub-cover-fallback");
   img.addEventListener("load", () => {
-    // Some catalogs put tiny generic placeholder icons in listings (e.g. a
-    // 22x22 png). Don't upscale those into a cover slot — keep our fallback.
+    // Skip tiny placeholder icons some catalogs use in listings.
     if (img.naturalWidth && img.naturalWidth < 48) {
       img.remove();
       return;
@@ -32,31 +27,58 @@ function attach(container, src) {
   container.appendChild(img);
 }
 
+function attachBlob(container, href, blob) {
+  const url = URL.createObjectURL(blob);
+  objectUrls.set(href, url);
+  attach(container, url);
+}
+
 export async function setCover(container, href) {
   if (!href || !container) return;
 
-  // Data URIs and public (no-credential) catalogs: a plain <img> is simplest
-  // and dodges CORS entirely (images render cross-origin without it). The
-  // authed blob path is only needed to attach an Authorization header.
-  if (href.startsWith("data:") || !authHeader()) {
+  // Data URIs render directly; nothing to fetch or cache.
+  if (href.startsWith("data:")) {
     attach(container, href);
     return;
   }
 
+  // Reuse a session object URL, then the persisted IndexedDB blob.
+  const reused = objectUrls.get(href);
+  if (reused) {
+    attach(container, reused);
+    return;
+  }
   try {
-    let objectUrl = cache.get(href);
-    if (!objectUrl) {
+    const cached = await getCachedCover(href);
+    if (cached && cached.blob) {
+      attachBlob(container, href, cached.blob);
+      return;
+    }
+  } catch {
+    /* fall through to network */
+  }
+
+  const auth = authHeader();
+  if (auth) {
+    // Authenticated catalog: fetch with the credential and persist the blob so
+    // the cover survives logout/reload.
+    try {
       const res = await fetch(href, {
-        headers: new Headers({ Accept: "image/*", Authorization: authHeader() }),
+        headers: new Headers({ Accept: "image/*", Authorization: auth }),
         credentials: "omit",
         mode: "cors",
       });
       if (!res.ok) return;
-      objectUrl = URL.createObjectURL(await res.blob());
-      cache.set(href, objectUrl);
+      const blob = await res.blob();
+      putCachedCover(href, blob).catch(() => {});
+      attachBlob(container, href, blob);
+    } catch {
+      /* keep the fallback */
     }
-    attach(container, objectUrl);
-  } catch {
-    /* keep the fallback */
+    return;
   }
+
+  // No credential: a plain <img> works for public covers; for an authed catalog
+  // while logged out the fallback shows until it's cached during a signed-in load.
+  attach(container, href);
 }

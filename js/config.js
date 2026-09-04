@@ -5,6 +5,6 @@
 export const DEFAULT_CATALOG_URL = "http://minerva.lan/opds";
 
 export const DB_NAME = "noctua";
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export const APP_NAME = "Noctua";

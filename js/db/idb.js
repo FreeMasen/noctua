@@ -23,6 +23,13 @@ export function openDb() {
         const s = db.createObjectStore("bookmarks", { keyPath: "id" });
         s.createIndex("by_createdAt", "createdAt");
       }
+      // v2: a persistent catalog cache so browsing works without re-auth.
+      if (!db.objectStoreNames.contains("feeds")) {
+        db.createObjectStore("feeds", { keyPath: "url" });
+      }
+      if (!db.objectStoreNames.contains("covers")) {
+        db.createObjectStore("covers", { keyPath: "url" });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -198,4 +205,30 @@ export function getBookmarks() {
 
 export function clearBookmarks() {
   return idbClear("bookmarks");
+}
+
+// -------------------------------------------------- catalog cache
+
+/** A cached catalog document (feed or publication) by URL, or undefined. */
+export function getCachedDoc(url) {
+  return idbGet("feeds", url);
+}
+
+export function putCachedDoc(url, contentType, body) {
+  return idbPut("feeds", { url, contentType, body, fetchedAt: Date.now() });
+}
+
+/** A cached cover image blob by URL, or undefined. */
+export function getCachedCover(url) {
+  return idbGet("covers", url);
+}
+
+export function putCachedCover(url, blob) {
+  return idbPut("covers", { url, blob, fetchedAt: Date.now() });
+}
+
+/** Drop the cached catalog (feeds + covers), e.g. from Settings. */
+export async function clearCatalogCache() {
+  await idbClear("feeds");
+  await idbClear("covers");
 }

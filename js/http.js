@@ -5,6 +5,7 @@
 import { authHeader, parseAuthDocument, promptLogin } from "./opds/auth.js";
 import { parseFeed } from "./opds/model.js";
 import { parseAtomFeed } from "./opds/atom.js";
+import { getCachedDoc, putCachedDoc } from "./db/idb.js";
 
 export const MEDIA = {
   feed: "application/opds+json",
@@ -96,16 +97,28 @@ async function authedRequest(url, { accept, signal } = {}) {
 }
 
 /**
- * Fetch a catalog feed and return the normalized model, auto-detecting OPDS 2.0
- * (JSON) vs OPDS 1.x (Atom) by content type, with a body-sniff fallback.
+ * Cache-first fetch of a catalog document (feed or publication), returning its
+ * raw `{ contentType, body }`. Reads from the IndexedDB catalog cache when
+ * present, so browsing costs no network — and no login. The network (and thus
+ * the password prompt) is only touched on a cache miss or an explicit refresh.
  */
-export async function fetchFeed(url, { signal } = {}) {
-  const res = await authedRequest(url, { accept: FEED_ACCEPT, signal });
-  const ctype = (res.headers.get("content-type") || "").toLowerCase();
+export async function fetchDoc(url, { refresh = false, accept = FEED_ACCEPT, signal } = {}) {
+  if (!refresh) {
+    const cached = await getCachedDoc(url);
+    if (cached) return { contentType: cached.contentType, body: cached.body };
+  }
+  const res = await authedRequest(url, { accept, signal });
+  const contentType = res.headers.get("content-type") || "";
   const body = await res.text();
-  const head = body.trimStart()[0];
+  putCachedDoc(url, contentType, body).catch(() => {}); // persist for offline / no-auth browsing
+  return { contentType, body };
+}
 
-  const looksJson = ctype.includes("json") || (!ctype.includes("xml") && head === "{");
+/** Detect OPDS 2.0 (JSON) vs OPDS 1.x (Atom) and parse into the normalized model. */
+function parseFeedBody(contentType, body, url) {
+  const ct = (contentType || "").toLowerCase();
+  const head = body.trimStart()[0];
+  const looksJson = ct.includes("json") || (!ct.includes("xml") && head === "{");
   if (looksJson) {
     try {
       return parseFeed(JSON.parse(body), url);
@@ -116,10 +129,16 @@ export async function fetchFeed(url, { signal } = {}) {
   return parseAtomFeed(body, url);
 }
 
-/** Fetch and parse a JSON document (an OPDS 2.0 publication), honouring 401. */
-export async function fetchJson(url, { accept = MEDIA.feed, signal } = {}) {
-  const res = await authedRequest(url, { accept, signal });
-  return res.json();
+/** Fetch a feed (cache-first) and return the normalized model. */
+export async function fetchFeed(url, { refresh = false, signal } = {}) {
+  const { contentType, body } = await fetchDoc(url, { refresh, accept: FEED_ACCEPT, signal });
+  return parseFeedBody(contentType, body, url);
+}
+
+/** Fetch a JSON document (an OPDS 2.0 publication), cache-first. */
+export async function fetchJson(url, { accept = MEDIA.feed, refresh = false, signal } = {}) {
+  const { body } = await fetchDoc(url, { refresh, accept, signal });
+  return JSON.parse(body);
 }
 
 /** Fetch a binary resource (cover, epub) as a Blob, honouring auth + 401. */
