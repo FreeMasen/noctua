@@ -1,9 +1,9 @@
 // Bootstrap: initialise storage, register routes, start the router.
 
-import { APP_NAME } from "./config.js";
 import { route, startRouter, navigate } from "./router.js";
 import { getCatalogUrl, setCatalogUrl } from "./db/idb.js";
 import { mountView, toast } from "./ui/dom.js";
+import { homeView, feedView } from "./views/feed.js";
 
 // --- Placeholder views (replaced by real modules in later milestones) -------
 
@@ -54,9 +54,8 @@ async function settingsView() {
 }
 
 function registerRoutes() {
-  // Real browsing routes land in M1; these keep the shell navigable for now.
-  route("home", placeholder(APP_NAME, "Catalog browsing arrives in the next milestone."));
-  route("feed", placeholder("Feed", "Feed rendering arrives in the next milestone."));
+  route("home", homeView);
+  route("feed", feedView);
   route("pub", placeholder("Publication", "Publication detail arrives in a later milestone."));
   route("search", placeholder("Search", "Search arrives in a later milestone."));
   route("bookmarks", placeholder("Bookmarks", "Bookmarks arrive in a later milestone."));
