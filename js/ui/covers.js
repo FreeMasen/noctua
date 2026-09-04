@@ -19,8 +19,15 @@ function attach(container, src) {
   img.loading = "lazy";
   const fallback = container.querySelector(".pub-cover-fallback");
   img.addEventListener("load", () => {
+    // Some catalogs put tiny generic placeholder icons in listings (e.g. a
+    // 22x22 png). Don't upscale those into a cover slot — keep our fallback.
+    if (img.naturalWidth && img.naturalWidth < 48) {
+      img.remove();
+      return;
+    }
     if (fallback) fallback.hidden = true;
   });
+  img.addEventListener("error", () => img.remove());
   img.src = src;
   container.appendChild(img);
 }

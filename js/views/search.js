@@ -76,11 +76,18 @@ const OPENSEARCH_NS = "http://a9.com/-/spec/opensearch/1.1/";
  * ({searchTerms}, {atom:author}, {atom:title}) to our {query}/{author}/{title}.
  */
 async function resolveOpenSearch(osdUrl) {
-  const res = await fetch(osdUrl, {
-    headers: { Accept: "application/opensearchdescription+xml" },
-    mode: "cors",
-    credentials: "omit",
-  });
+  let res;
+  try {
+    res = await fetch(osdUrl, {
+      headers: { Accept: "application/opensearchdescription+xml" },
+      mode: "cors",
+      credentials: "omit",
+    });
+  } catch {
+    // The OpenSearch document often lives on an endpoint that doesn't send CORS
+    // headers (e.g. Project Gutenberg), so the browser blocks reading it.
+    return null;
+  }
   if (!res.ok) return null;
   const doc = new DOMParser().parseFromString(await res.text(), "application/xml");
   const urls = [...doc.getElementsByTagNameNS(OPENSEARCH_NS, "Url")].filter(
@@ -114,7 +121,11 @@ export async function searchView(params) {
       ? await resolveOpenSearch(root.searchLink.href)
       : root.searchLink.href;
     if (!template) {
-      renderError("Couldn't read this catalog's search description.");
+      renderError(
+        root.searchLink.opensearch
+          ? "This catalog's search can't be used from the browser — its OpenSearch description doesn't allow cross-origin access (CORS)."
+          : "Couldn't read this catalog's search description.",
+      );
       return;
     }
     const vars = templateVars(template);
