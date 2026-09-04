@@ -148,7 +148,7 @@ function renderDetail(pub) {
   return root;
 }
 
-async function show(pub) {
+async function present(pub) {
   mountView(renderDetail(pub));
   recordView(pub, await getCatalogUrl()); // fire-and-forget history entry
 }
@@ -157,7 +157,7 @@ async function load(url) {
   renderLoading();
   try {
     const json = await fetchJson(url, { accept: MEDIA.publication });
-    await show(parsePublication(json, url));
+    await present(parsePublication(json, url));
   } catch (err) {
     renderError(err && err.message ? err.message : String(err), () => load(url));
   }
@@ -171,7 +171,7 @@ async function load(url) {
 export async function publicationView(params) {
   if (params.ref) {
     const pub = getStashedPublication(params.ref);
-    if (pub) await show(pub);
+    if (pub) await present(pub);
     else renderError("This book's details are no longer loaded. Open it again from the catalog.");
     return;
   }
