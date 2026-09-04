@@ -1,0 +1,18 @@
+{
+  "name": "Noctua",
+  "short_name": "Noctua",
+  "description": "A standalone OPDS 2.0 catalog client.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#16171c",
+  "theme_color": "#1b1c22",
+  "icons": [
+    {
+      "src": "icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

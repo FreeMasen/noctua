@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1b1c22" />
+  <title>Noctua</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="#/" aria-label="Noctua home">
+      <span class="brand-mark" aria-hidden="true">🦉</span>
+      <span class="brand-name">Noctua</span>
+    </a>
+    <nav class="app-nav" aria-label="Primary">
+      <a href="#/" data-nav="home" title="Home">Home</a>
+      <a href="#/search" data-nav="search" title="Search">Search</a>
+      <a href="#/bookmarks" data-nav="bookmarks" title="Bookmarks">Bookmarks</a>
+      <a href="#/history" data-nav="history" title="History">History</a>
+      <a href="#/settings" data-nav="settings" title="Settings">Settings</a>
+    </nav>
+  </header>
+
+  <!-- The router swaps content in here. -->
+  <main id="view" class="view" aria-live="polite"></main>
+
+  <!-- Transient status / error messages. -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Modal host (login, etc.). -->
+  <div id="modal-root" class="modal-root" hidden></div>
+
+  <!-- ============================ TEMPLATES ============================ -->
+
+  <!-- Generic loading / empty / error blocks -->
+  <template id="tmpl-loading">
+    <div class="state state-loading"><span class="spinner" aria-hidden="true"></span> Loading…</div>
+  </template>
+  <template id="tmpl-empty">
+    <div class="state state-empty" data-slot="message">Nothing here.</div>
+  </template>
+  <template id="tmpl-error">
+    <div class="state state-error">
+      <p data-slot="message">Something went wrong.</p>
+      <button type="button" data-action="retry" class="btn">Retry</button>
+    </div>
+  </template>
+
+  <!-- A rendered feed: title + sections get appended into .feed-sections -->
+  <template id="tmpl-feed">
+    <section class="feed">
+      <h1 class="feed-title" data-slot="title"></h1>
+      <p class="feed-subtitle" data-slot="subtitle" hidden></p>
+      <div class="feed-sections" data-slot="sections"></div>
+    </section>
+  </template>
+
+  <!-- Navigation collection: an ordered list of browse links -->
+  <template id="tmpl-nav-list">
+    <nav class="nav-list" aria-label="Navigation">
+      <h2 class="section-title" data-slot="title" hidden></h2>
+      <ul class="nav-list-items" data-slot="items"></ul>
+    </nav>
+  </template>
+  <template id="tmpl-nav-item">
+    <li class="nav-item">
+      <a class="nav-link" data-slot="link">
+        <span class="nav-link-title" data-slot="title"></span>
+        <span class="nav-link-count" data-slot="count" hidden></span>
+      </a>
+    </li>
+  </template>
+
+  <!-- Group: a titled block containing nav or publications, with optional "see all" -->
+  <template id="tmpl-group">
+    <section class="group">
+      <div class="group-head">
+        <h2 class="section-title" data-slot="title"></h2>
+        <a class="group-more" data-slot="more" hidden>See all</a>
+      </div>
+      <div class="group-body" data-slot="body"></div>
+    </section>
+  </template>
+
+  <!-- Publications collection: a responsive grid of cards -->
+  <template id="tmpl-pub-grid">
+    <div class="pub-grid" data-slot="items"></div>
+  </template>
+  <template id="tmpl-pub-card">
+    <a class="pub-card" data-slot="link">
+      <div class="pub-cover" data-slot="cover">
+        <div class="pub-cover-fallback" data-slot="cover-fallback" aria-hidden="true"></div>
+      </div>
+      <div class="pub-meta">
+        <span class="pub-title" data-slot="title"></span>
+        <span class="pub-author" data-slot="author"></span>
+      </div>
+    </a>
+  </template>
+
+  <!-- Facets: groups of filter/sort links -->
+  <template id="tmpl-facet-group">
+    <section class="facet-group">
+      <h2 class="section-title" data-slot="title"></h2>
+      <ul class="facet-links" data-slot="items"></ul>
+    </section>
+  </template>
+  <template id="tmpl-facet-link">
+    <li class="facet-item">
+      <a class="facet-link" data-slot="link">
+        <span data-slot="title"></span>
+        <span class="facet-count" data-slot="count" hidden></span>
+      </a>
+    </li>
+  </template>
+
+  <!-- Pagination controls -->
+  <template id="tmpl-pager">
+    <nav class="pager" aria-label="Pagination">
+      <button type="button" class="btn pager-btn" data-slot="first" hidden>« First</button>
+      <button type="button" class="btn pager-btn" data-slot="prev" hidden>‹ Prev</button>
+      <span class="pager-status" data-slot="status"></span>
+      <button type="button" class="btn pager-btn" data-slot="next" hidden>Next ›</button>
+      <button type="button" class="btn pager-btn" data-slot="last" hidden>Last »</button>
+    </nav>
+  </template>
+
+  <!-- Publication detail -->
+  <template id="tmpl-pub-detail">
+    <article class="pub-detail">
+      <div class="pub-detail-cover" data-slot="cover">
+        <div class="pub-cover-fallback" data-slot="cover-fallback" aria-hidden="true"></div>
+      </div>
+      <div class="pub-detail-body">
+        <h1 class="pub-detail-title" data-slot="title"></h1>
+        <p class="pub-detail-author" data-slot="author"></p>
+        <dl class="pub-detail-facts" data-slot="facts"></dl>
+        <div class="pub-detail-actions" data-slot="actions"></div>
+        <div class="pub-detail-description" data-slot="description"></div>
+      </div>
+    </article>
+  </template>
+
+  <!-- A key/value fact row for the detail view -->
+  <template id="tmpl-fact">
+    <div class="fact">
+      <dt data-slot="key"></dt>
+      <dd data-slot="value"></dd>
+    </div>
+  </template>
+
+  <!-- A generic list row (history / bookmarks) -->
+  <template id="tmpl-list-row">
+    <li class="list-row">
+      <a class="list-row-link" data-slot="link">
+        <span class="list-row-title" data-slot="title"></span>
+        <span class="list-row-sub" data-slot="sub"></span>
+      </a>
+      <button type="button" class="btn btn-quiet" data-action="remove" title="Remove">✕</button>
+    </li>
+  </template>
+
+  <!-- Login modal (populated from the OPDS authentication document) -->
+  <template id="tmpl-login">
+    <form class="modal login" method="dialog">
+      <h2 class="modal-title" data-slot="title">Sign in</h2>
+      <p class="modal-desc" data-slot="description" hidden></p>
+      <label class="field">
+        <span data-slot="login-label">Username</span>
+        <input type="text" name="username" autocomplete="username" required />
+      </label>
+      <label class="field">
+        <span data-slot="password-label">Password</span>
+        <input type="password" name="password" autocomplete="current-password" required />
+      </label>
+      <p class="modal-error" data-slot="error" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-quiet" data-action="cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </div>
+    </form>
+  </template>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

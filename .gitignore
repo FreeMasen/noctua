@@ -1,0 +1,9 @@
+# Editor / OS cruft
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Nothing here is built — this is a no-build static site.
+# Keep node_modules etc. out just in case tooling is added later.
+node_modules/
