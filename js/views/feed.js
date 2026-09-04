@@ -4,7 +4,7 @@
 
 import { fetchJson } from "../http.js";
 import { parseFeed } from "../opds/model.js";
-import { cloneTemplate, setText, show } from "../ui/templates.js";
+import { cloneTemplate, setText, show, slot } from "../ui/templates.js";
 import { mountView, renderLoading, renderError } from "../ui/dom.js";
 import { setCover } from "../ui/covers.js";
 import { feedHash, pubHash, navigate } from "../router.js";
@@ -29,15 +29,14 @@ function buildNavList(title, items) {
 
 function buildPubGrid(pubs) {
   const node = cloneTemplate("tmpl-pub-grid");
-  const grid = node.querySelector('[data-slot="items"]');
+  const grid = slot(node, "items"); // the grid node itself carries data-slot="items"
   for (const pub of pubs) {
     const card = cloneTemplate("tmpl-pub-card");
-    const link = card.querySelector('[data-slot="link"]');
+    const link = slot(card, "link"); // the card <a> itself carries data-slot="link"
     link.href = pub.selfHref ? pubHash(pub.selfHref) : "#/";
     setText(card, "title", pub.title);
     setText(card, "author", pub.author);
-    const cover = card.querySelector('[data-slot="cover"]');
-    setCover(cover, pub.coverHref);
+    setCover(slot(card, "cover"), pub.coverHref);
     grid.appendChild(card);
   }
   return node;
