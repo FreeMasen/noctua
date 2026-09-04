@@ -48,6 +48,10 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute must always win, even over layout rules like the
+   modal overlay's display:flex — otherwise a "hidden" layer covers the page. */
+[hidden] { display: none !important; }
+
 html, body { margin: 0; padding: 0; }
 
 body {

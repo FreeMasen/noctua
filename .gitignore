@@ -7,3 +7,7 @@
 # Nothing here is built — this is a no-build static site.
 # Keep node_modules etc. out just in case tooling is added later.
 node_modules/
+
+# Local dev fixtures (generated from a catalog for offline UI poking). Not part
+# of the app; keeps catalog-derived data out of the repo.
+dev/
