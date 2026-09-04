@@ -29,6 +29,11 @@ export function pubHash(url) {
   return `#/pub?u=${encodeURIComponent(url)}`;
 }
 
+/** Hash for an inline publication (no fetchable document) by cache key. */
+export function pubRefHash(key) {
+  return `#/pub?ref=${encodeURIComponent(key)}`;
+}
+
 /** Hash for the reader, by acquisition href. */
 export function readerHash(url) {
   return `#/reader?u=${encodeURIComponent(url)}`;

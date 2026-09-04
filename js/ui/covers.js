@@ -12,28 +12,43 @@ const cache = new Map(); // href -> objectURL
  * failure the fallback stays — this is intentionally non-interactive (it never
  * triggers a login prompt; feeds authenticate before covers are requested).
  */
+function attach(container, src) {
+  const img = document.createElement("img");
+  img.alt = "";
+  img.decoding = "async";
+  img.loading = "lazy";
+  const fallback = container.querySelector(".pub-cover-fallback");
+  img.addEventListener("load", () => {
+    if (fallback) fallback.hidden = true;
+  });
+  img.src = src;
+  container.appendChild(img);
+}
+
 export async function setCover(container, href) {
   if (!href || !container) return;
+
+  // Data URIs and public (no-credential) catalogs: a plain <img> is simplest
+  // and dodges CORS entirely (images render cross-origin without it). The
+  // authed blob path is only needed to attach an Authorization header.
+  if (href.startsWith("data:") || !authHeader()) {
+    attach(container, href);
+    return;
+  }
+
   try {
     let objectUrl = cache.get(href);
     if (!objectUrl) {
-      const headers = new Headers({ Accept: "image/*" });
-      const auth = authHeader();
-      if (auth) headers.set("Authorization", auth);
-      const res = await fetch(href, { headers, credentials: "omit", mode: "cors" });
+      const res = await fetch(href, {
+        headers: new Headers({ Accept: "image/*", Authorization: authHeader() }),
+        credentials: "omit",
+        mode: "cors",
+      });
       if (!res.ok) return;
       objectUrl = URL.createObjectURL(await res.blob());
       cache.set(href, objectUrl);
     }
-    const img = document.createElement("img");
-    img.alt = "";
-    img.decoding = "async";
-    const fallback = container.querySelector(".pub-cover-fallback");
-    img.addEventListener("load", () => {
-      if (fallback) fallback.hidden = true;
-    });
-    img.src = objectUrl;
-    container.appendChild(img);
+    attach(container, objectUrl);
   } catch {
     /* keep the fallback */
   }

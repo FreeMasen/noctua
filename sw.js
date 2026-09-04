@@ -4,7 +4,7 @@
 // - Cross-origin catalog data (feeds, covers): stale-while-revalidate so
 //   previously-seen browsing works offline. Bump CACHE_VERSION on shell changes.
 
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const SHELL_CACHE = `noctua-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `noctua-runtime-${CACHE_VERSION}`;
 
@@ -31,8 +31,10 @@ const SHELL = [
   "js/ui/theme.js",
   "js/opds/rels.js",
   "js/opds/model.js",
+  "js/opds/atom.js",
   "js/opds/auth.js",
   "js/opds/uritemplate.js",
+  "js/opds/pubcache.js",
   "js/views/feed.js",
   "js/views/publication.js",
   "js/views/search.js",

@@ -2,12 +2,12 @@
 // pagination are all just links discovered in feeds, this one renderer handles
 // the home page and every drill-down.
 
-import { fetchJson } from "../http.js";
-import { parseFeed } from "../opds/model.js";
+import { fetchFeed } from "../http.js";
 import { cloneTemplate, setText, show, slot } from "../ui/templates.js";
 import { mountView, renderLoading, renderError } from "../ui/dom.js";
 import { setCover } from "../ui/covers.js";
-import { feedHash, pubHash, navigate } from "../router.js";
+import { feedHash, pubHash, pubRefHash, navigate } from "../router.js";
+import { stashPublication } from "../opds/pubcache.js";
 import { getCatalogUrl } from "../db/idb.js";
 
 // -------------------------------------------------------------- builders
@@ -32,11 +32,28 @@ function buildPubGrid(pubs) {
   const grid = slot(node, "items"); // the grid node itself carries data-slot="items"
   for (const pub of pubs) {
     const card = cloneTemplate("tmpl-pub-card");
-    const link = slot(card, "link"); // the card <a> itself carries data-slot="link"
-    link.href = pub.selfHref ? pubHash(pub.selfHref) : "#/";
+    // Publications with a fetchable document link by URL; inline ones (OPDS 1.x
+    // entries, compact 2.0 pubs) are stashed and opened from memory.
+    slot(card, "link").href = pub.selfHref ? pubHash(pub.selfHref) : pubRefHash(stashPublication(pub));
     setText(card, "title", pub.title);
     setText(card, "author", pub.author);
     setCover(slot(card, "cover"), pub.coverHref);
+    grid.appendChild(card);
+  }
+  return node;
+}
+
+// Navigation entries that carry a cover (common in OPDS 1.x listings) render as
+// a card grid that drills into the linked feed, rather than a plain text list.
+function buildNavGrid(items) {
+  const node = cloneTemplate("tmpl-pub-grid");
+  const grid = slot(node, "items");
+  for (const item of items) {
+    const card = cloneTemplate("tmpl-pub-card");
+    slot(card, "link").href = feedHash(item.href);
+    setText(card, "title", item.title);
+    setText(card, "author", item.count != null ? `${item.count} items` : "");
+    setCover(slot(card, "cover"), item.image);
     grid.appendChild(card);
   }
   return node;
@@ -114,7 +131,12 @@ function renderFeed(feed) {
   if (feed.subtitle) show(setText(root, "subtitle", feed.subtitle), true);
   const sections = root.querySelector('[data-slot="sections"]');
 
-  if (feed.navigation.length) sections.appendChild(buildNavList(null, feed.navigation));
+  if (feed.navigation.length) {
+    const withCover = feed.navigation.filter((n) => n.image);
+    const plain = feed.navigation.filter((n) => !n.image);
+    if (withCover.length) sections.appendChild(buildNavGrid(withCover));
+    if (plain.length) sections.appendChild(buildNavList(null, plain));
+  }
   for (const group of feed.groups) sections.appendChild(buildGroup(group));
   if (feed.publications.length) sections.appendChild(buildPubGrid(feed.publications));
   for (const facet of feed.facets) sections.appendChild(buildFacetGroup(facet));
@@ -129,8 +151,7 @@ function renderFeed(feed) {
 async function loadAndRender(url) {
   renderLoading();
   try {
-    const json = await fetchJson(url);
-    mountView(renderFeed(parseFeed(json, url)));
+    mountView(renderFeed(await fetchFeed(url)));
   } catch (err) {
     renderError(err && err.message ? err.message : String(err), () => loadAndRender(url));
   }

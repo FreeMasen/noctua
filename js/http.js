@@ -3,12 +3,19 @@
 // dispatches by media type.
 
 import { authHeader, parseAuthDocument, promptLogin } from "./opds/auth.js";
+import { parseFeed } from "./opds/model.js";
+import { parseAtomFeed } from "./opds/atom.js";
 
 export const MEDIA = {
   feed: "application/opds+json",
   publication: "application/opds-publication+json",
   auth: "application/opds-authentication+json",
+  atom: "application/atom+xml",
 };
+
+// Accept both OPDS 2.0 (JSON) and OPDS 1.x (Atom). All bytes here are
+// CORS-safelisted, so no-auth requests to public catalogs avoid a preflight.
+const FEED_ACCEPT = "application/opds+json, application/atom+xml, application/json";
 
 export class HttpError extends Error {
   constructor(message, status) {
@@ -60,14 +67,15 @@ export function parseLinkHeader(value) {
 }
 
 /**
- * Fetch and parse a JSON document from the catalog, transparently handling a
- * 401 by prompting for login once and retrying.
+ * Perform a GET, transparently handling a 401 by reading the Authentication
+ * for OPDS document, prompting for login once, and retrying. Returns the ok
+ * Response or throws an HttpError.
  */
-export async function fetchJson(url, { accept = MEDIA.feed, signal } = {}) {
+async function authedRequest(url, { accept, signal } = {}) {
   let res;
   try {
     res = await request(url, { accept, signal });
-  } catch (err) {
+  } catch {
     // A CORS or network failure surfaces as a TypeError with no status.
     throw new HttpError(
       "Couldn't reach the catalog. Check the URL, your connection, and that the server allows this origin (CORS).",
@@ -84,18 +92,38 @@ export async function fetchJson(url, { accept = MEDIA.feed, signal } = {}) {
   }
 
   if (!res.ok) throw new HttpError(`Request failed (${res.status} ${res.statusText}).`, res.status);
+  return res;
+}
+
+/**
+ * Fetch a catalog feed and return the normalized model, auto-detecting OPDS 2.0
+ * (JSON) vs OPDS 1.x (Atom) by content type, with a body-sniff fallback.
+ */
+export async function fetchFeed(url, { signal } = {}) {
+  const res = await authedRequest(url, { accept: FEED_ACCEPT, signal });
+  const ctype = (res.headers.get("content-type") || "").toLowerCase();
+  const body = await res.text();
+  const head = body.trimStart()[0];
+
+  const looksJson = ctype.includes("json") || (!ctype.includes("xml") && head === "{");
+  if (looksJson) {
+    try {
+      return parseFeed(JSON.parse(body), url);
+    } catch {
+      /* fall through to Atom */
+    }
+  }
+  return parseAtomFeed(body, url);
+}
+
+/** Fetch and parse a JSON document (an OPDS 2.0 publication), honouring 401. */
+export async function fetchJson(url, { accept = MEDIA.feed, signal } = {}) {
+  const res = await authedRequest(url, { accept, signal });
   return res.json();
 }
 
 /** Fetch a binary resource (cover, epub) as a Blob, honouring auth + 401. */
 export async function fetchBlob(url, { accept, signal } = {}) {
-  let res = await request(url, { accept, signal });
-  if (res.status === 401) {
-    const authDoc = await readAuthDocument(res, url);
-    const ok = await promptLogin(authDoc);
-    if (!ok) throw new HttpError("Sign-in cancelled.", 401);
-    res = await request(url, { accept, signal });
-  }
-  if (!res.ok) throw new HttpError(`Request failed (${res.status}).`, res.status);
+  const res = await authedRequest(url, { accept, signal });
   return res.blob();
 }

@@ -11,6 +11,7 @@ import { setCover } from "../ui/covers.js";
 import { sanitizeHtml } from "../ui/sanitize.js";
 import { slugify, extForType, formatDate } from "../ui/format.js";
 import { getCatalogUrl, recordView, isBookmarked, toggleBookmark } from "../db/idb.js";
+import { getStashedPublication } from "../opds/pubcache.js";
 
 const ACQ_LABELS = {
   download: "Download",
@@ -147,23 +148,36 @@ function renderDetail(pub) {
   return root;
 }
 
+async function show(pub) {
+  mountView(renderDetail(pub));
+  recordView(pub, await getCatalogUrl()); // fire-and-forget history entry
+}
+
 async function load(url) {
   renderLoading();
   try {
     const json = await fetchJson(url, { accept: MEDIA.publication });
-    const pub = parsePublication(json, url);
-    mountView(renderDetail(pub));
-    recordView(pub, await getCatalogUrl()); // fire-and-forget history entry
+    await show(parsePublication(json, url));
   } catch (err) {
     renderError(err && err.message ? err.message : String(err), () => load(url));
   }
 }
 
-/** Route handler for #/pub?u=<encoded self href>. */
+/**
+ * Route handler for the publication detail.
+ * `#/pub?u=<self href>` fetches an OPDS 2.0 publication document; `#/pub?ref=<key>`
+ * renders an inline publication (OPDS 1.x entry or compact 2.0) from the session cache.
+ */
 export async function publicationView(params) {
-  if (!params.u) {
-    renderError("No publication specified.");
+  if (params.ref) {
+    const pub = getStashedPublication(params.ref);
+    if (pub) await show(pub);
+    else renderError("This book's details are no longer loaded. Open it again from the catalog.");
     return;
   }
-  await load(decodeURIComponent(params.u));
+  if (params.u) {
+    await load(decodeURIComponent(params.u));
+    return;
+  }
+  renderError("No publication specified.");
 }
