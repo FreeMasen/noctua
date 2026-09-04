@@ -4,7 +4,7 @@
 // - Cross-origin catalog data (feeds, covers): stale-while-revalidate so
 //   previously-seen browsing works offline. Bump CACHE_VERSION on shell changes.
 
-const CACHE_VERSION = "v6";
+const CACHE_VERSION = "v7";
 const SHELL_CACHE = `noctua-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `noctua-runtime-${CACHE_VERSION}`;
 
@@ -41,6 +41,7 @@ const SHELL = [
   "js/views/login.js",
   "js/views/library.js",
   "js/views/settings.js",
+  "js/views/reader.js",
 ];
 
 self.addEventListener("install", (event) => {

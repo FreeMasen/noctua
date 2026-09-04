@@ -12,6 +12,7 @@ import { sanitizeHtml } from "../ui/sanitize.js";
 import { slugify, extForType, formatDate } from "../ui/format.js";
 import { getCatalogUrl, recordView, isBookmarked, toggleBookmark } from "../db/idb.js";
 import { getStashedPublication } from "../opds/pubcache.js";
+import { navigate, readerHash } from "../router.js";
 
 const ACQ_LABELS = {
   download: "Download",
@@ -23,6 +24,8 @@ const ACQ_LABELS = {
 };
 // Intents we fetch directly as a file; the rest are treated as external flows.
 const DIRECT = new Set(["download", "preview", "acquire"]);
+// Formats the in-app reader can render.
+const READABLE = /(epub|pdf)/i;
 
 /** Collect unique acquisition links with their intent, download-first. */
 function acquisitions(pub) {
@@ -81,10 +84,24 @@ function buildActions(pub) {
     frag.appendChild(span);
     return frag;
   }
+
+  // Offer an in-app "Read" for the first directly-fetchable EPUB/PDF.
+  const readable = items.find(({ intent, link }) => DIRECT.has(intent) && link.type && READABLE.test(link.type));
+  if (readable) {
+    const read = document.createElement("button");
+    read.type = "button";
+    read.className = "btn btn-primary";
+    read.textContent = "Read";
+    read.addEventListener("click", () =>
+      navigate(readerHash({ href: readable.link.href, type: readable.link.type, id: pub.id, title: pub.title })));
+    frag.appendChild(read);
+  }
+
   items.forEach(({ intent, link }, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = i === 0 ? "btn btn-primary" : "btn";
+    // If a Read button leads, downloads are secondary; otherwise the first leads.
+    btn.className = !readable && i === 0 ? "btn btn-primary" : "btn";
     btn.textContent = (ACQ_LABELS[intent] || "Get") + priceLabel(link);
     if (DIRECT.has(intent)) {
       btn.addEventListener("click", () => downloadDirect(pub, link, btn));

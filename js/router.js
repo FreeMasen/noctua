@@ -34,9 +34,10 @@ export function pubRefHash(key) {
   return `#/pub?ref=${encodeURIComponent(key)}`;
 }
 
-/** Hash for the reader, by acquisition href. */
-export function readerHash(url) {
-  return `#/reader?u=${encodeURIComponent(url)}`;
+/** Hash for the reader: the file href, its media type, and book id/title. */
+export function readerHash({ href, type, id, title }) {
+  const q = new URLSearchParams({ u: href, t: type || "", id: id || "", title: title || "" });
+  return `#/reader?${q.toString()}`;
 }
 
 /** Programmatic navigation. */

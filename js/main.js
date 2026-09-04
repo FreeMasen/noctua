@@ -9,6 +9,7 @@ import { publicationView } from "./views/publication.js";
 import { searchView } from "./views/search.js";
 import { historyView, bookmarksView } from "./views/library.js";
 import { settingsView } from "./views/settings.js";
+import { readerView } from "./views/reader.js";
 
 function placeholder(title, note) {
   return () => {
@@ -33,7 +34,7 @@ function registerRoutes() {
   route("bookmarks", bookmarksView);
   route("history", historyView);
   route("settings", settingsView);
-  route("reader", placeholder("Reader", "The reader arrives in the final milestone."));
+  route("reader", readerView);
   route("notfound", placeholder("Not found", "That page doesn't exist."));
 }
 

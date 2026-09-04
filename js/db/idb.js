@@ -143,6 +143,20 @@ export function getHistory() {
   return idbGetAll("history", { index: "by_lastViewedAt", direction: "prev" });
 }
 
+/** Store reading progress for a book, merging into its history entry. */
+export async function setProgress(id, progress) {
+  if (!id) return;
+  const row = (await idbGet("history", id)) || { id };
+  await idbPut("history", { ...row, progress, lastViewedAt: Date.now() });
+}
+
+/** Read stored reading progress for a book (or undefined). */
+export async function getProgress(id) {
+  if (!id) return undefined;
+  const row = await idbGet("history", id);
+  return row ? row.progress : undefined;
+}
+
 export function removeHistory(id) {
   return idbDelete("history", id);
 }
