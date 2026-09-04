@@ -164,6 +164,7 @@ a { color: inherit; text-decoration: none; }
 .fact { display: contents; }
 .pub-detail-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
 .pub-detail-description { color: var(--text); line-height: 1.65; }
+.pub-detail-note { color: var(--text-dim); }
 .pub-detail-description :where(p, ul, ol) { margin: 0 0 1em; }
 
 @media (max-width: 560px) {
