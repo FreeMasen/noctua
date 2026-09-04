@@ -32,6 +32,20 @@ serve .        # from the repo root
 Because dev runs over plain HTTP, it can talk to a plain-HTTP catalog (e.g. a LAN
 `http://…` server) without mixed-content restrictions.
 
+## Installing to a web root
+
+`install.sh` copies the runtime assets (no dev fixtures or git metadata) into a
+web root, pruning files removed from the repo and using `sudo` only if needed:
+
+```sh
+./install.sh                  # -> /usr/share/noctua (default)
+./install.sh /var/www/noctua  # -> a custom destination
+```
+
+Serving it over plain HTTP on your LAN lets an `http://` page reach an `http://`
+catalog with no mixed-content block — the simplest way to use Noctua against a
+LAN catalog without TLS.
+
 ## Deployment notes (operator's responsibility, not baked into this repo)
 
 Noctua runs on a **different origin** than the catalog, so the catalog server must:
