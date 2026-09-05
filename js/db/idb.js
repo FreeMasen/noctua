@@ -140,10 +140,15 @@ function snapshot(pub, catalogUrl) {
   };
 }
 
-/** Record (or refresh) a publication view in history. No-op without an id. */
+/**
+ * Record (or refresh) a publication view in history. No-op without an id.
+ * Merges into any existing row so reading progress (saved by setProgress) and
+ * other fields aren't clobbered when the detail page is reopened.
+ */
 export async function recordView(pub, catalogUrl) {
   if (!pub || !pub.id) return;
-  await idbPut("history", { ...snapshot(pub, catalogUrl), lastViewedAt: Date.now() });
+  const existing = (await idbGet("history", pub.id)) || {};
+  await idbPut("history", { ...existing, ...snapshot(pub, catalogUrl), lastViewedAt: Date.now() });
 }
 
 export function getHistory() {
