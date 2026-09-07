@@ -116,6 +116,44 @@ function buildShell(title) {
 }
 const el = (root, name) => root.querySelector(`[data-el="${name}"]`);
 
+// --------------------------------------------------------- touch gestures
+
+// Turn-page gestures for a touch-only display. A horizontal drag past SWIPE is a
+// page turn; a near-stationary quick tap is a zone action — left third = prev,
+// right third = next, center = toggle the toolbar. Returns {onStart, onEnd} to
+// wire onto touch events (the EPUB iframe forwards these through epub.js; the
+// PDF stage fires them directly). `widthOf` gives the reading area's width so
+// zones scale with the viewport.
+function createGestures({ prev, next, toggle, widthOf }) {
+  const SWIPE = 45;    // px of horizontal travel that counts as a swipe
+  const TAP_SLOP = 10; // max travel still treated as a tap, not a drag
+  const TAP_MS = 500;  // max duration still treated as a tap
+  let sx = 0, sy = 0, st = 0, tracking = false;
+  const point = (e) =>
+    (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+
+  function onStart(e) {
+    const p = point(e);
+    sx = p.clientX; sy = p.clientY; st = Date.now(); tracking = true;
+  }
+  function onEnd(e) {
+    if (!tracking) return;
+    tracking = false;
+    const p = point(e);
+    const dx = p.clientX - sx, dy = p.clientY - sy, dt = Date.now() - st;
+    if (Math.abs(dx) > SWIPE && Math.abs(dx) > Math.abs(dy)) {
+      (dx < 0 ? next : prev)();
+    } else if (Math.abs(dx) <= TAP_SLOP && Math.abs(dy) <= TAP_SLOP && dt <= TAP_MS) {
+      if (e.target && e.target.closest && e.target.closest("a")) return; // keep links tappable
+      const w = widthOf() || 1;
+      if (p.clientX < w * 0.33) prev();
+      else if (p.clientX > w * 0.67) next();
+      else toggle();
+    }
+  }
+  return { onStart, onEnd };
+}
+
 // --------------------------------------------------------- reader appearance
 
 // Push the current appearance onto the rendition. epub.js reapplies these
@@ -337,6 +375,15 @@ async function renderEpub(blob, { id, title }, shell) {
   window.addEventListener("keydown", onKey);
   rendition.on("keyup", onKey); // arrows while focus is inside the iframe
 
+  // Touch: epub.js forwards the iframe's touch events up to the rendition.
+  const gestures = createGestures({
+    prev, next,
+    toggle: () => shell.classList.toggle("reader-immersive"),
+    widthOf: () => stage.clientWidth,
+  });
+  rendition.on("touchstart", gestures.onStart);
+  rendition.on("touchend", gestures.onEnd);
+
   onLeaveReader(() => {
     window.removeEventListener("keydown", onKey);
     try { rendition.destroy(); book.destroy(); } catch { /* ignore */ }
@@ -386,10 +433,22 @@ async function renderPdf(blob, { id }, shell) {
   };
   window.addEventListener("keydown", onKey);
 
+  // Touch: the PDF renders to a canvas in the page, so listen on the stage.
+  const gestures = createGestures({
+    prev: () => go(-1),
+    next: () => go(1),
+    toggle: () => shell.classList.toggle("reader-immersive"),
+    widthOf: () => stage.clientWidth,
+  });
+  stage.addEventListener("touchstart", gestures.onStart, { passive: true });
+  stage.addEventListener("touchend", gestures.onEnd, { passive: true });
+
   await draw();
 
   onLeaveReader(() => {
     window.removeEventListener("keydown", onKey);
+    stage.removeEventListener("touchstart", gestures.onStart);
+    stage.removeEventListener("touchend", gestures.onEnd);
     try { pdf.destroy(); } catch { /* ignore */ }
   });
 }

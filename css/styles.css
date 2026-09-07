@@ -298,6 +298,9 @@ a { color: inherit; text-decoration: none; }
   border-bottom: 1px solid var(--border);
 }
 .reader-select:disabled { opacity: 0.45; }
+/* Immersive mode (toggled by a center tap): hide the toolbar for a full-screen
+   reading surface. The stage flexes to fill the reclaimed space. */
+.reader-immersive .reader-bar { display: none; }
 .reader-title {
   flex: 1;
   min-width: 0;
