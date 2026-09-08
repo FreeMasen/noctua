@@ -11,3 +11,6 @@ node_modules/
 # Local dev fixtures (generated from a catalog for offline UI poking). Not part
 # of the app; keeps catalog-derived data out of the repo.
 dev/
+
+# Icon source art — the committed icons are generated from it; keep it local.
+Noctua.png
