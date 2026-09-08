@@ -126,6 +126,20 @@ export async function setTheme(theme) {
   return setSetting("theme", theme);
 }
 
+// Reader appearance (EPUB reading surface): style mode + color scheme + font.
+// Stored as one object so new knobs can be added without new settings keys.
+// This is the GLOBAL default; individual books can override it (see
+// get/setBookAppearance, which live on the history row).
+export const READER_DEFAULTS = { styleMode: "custom", colorScheme: "light", fontFamily: "" };
+
+export async function getReaderPrefs() {
+  return { ...READER_DEFAULTS, ...(await getSetting("readerPrefs", {})) };
+}
+
+export async function setReaderPrefs(prefs) {
+  return setSetting("readerPrefs", { ...READER_DEFAULTS, ...prefs });
+}
+
 // --------------------------------------------------- reading history
 
 /** Snapshot the fields we need to relink and display a publication later. */
@@ -167,6 +181,31 @@ export async function getProgress(id) {
   if (!id) return undefined;
   const row = await idbGet("history", id);
   return row ? row.progress : undefined;
+}
+
+/**
+ * Per-book reader appearance override, stored on the history row alongside
+ * progress. Absent (undefined) means the book follows the global default.
+ */
+export async function getBookAppearance(id) {
+  if (!id) return undefined;
+  const row = await idbGet("history", id);
+  return row ? row.appearance : undefined;
+}
+
+export async function setBookAppearance(id, appearance) {
+  if (!id) return;
+  const row = (await idbGet("history", id)) || { id };
+  await idbPut("history", { ...row, appearance, lastViewedAt: Date.now() });
+}
+
+/** Drop a book's override so it falls back to the global default. */
+export async function clearBookAppearance(id) {
+  if (!id) return;
+  const row = await idbGet("history", id);
+  if (!row || !("appearance" in row)) return;
+  const { appearance, ...rest } = row;
+  await idbPut("history", rest);
 }
 
 export function removeHistory(id) {

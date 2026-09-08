@@ -291,11 +291,16 @@ a { color: inherit; text-decoration: none; }
 .reader-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   padding: 8px clamp(12px, 3vw, 20px);
   background: var(--bg-elev);
   border-bottom: 1px solid var(--border);
 }
+.reader-select:disabled { opacity: 0.45; }
+/* Immersive mode (toggled by a center tap): hide the toolbar for a full-screen
+   reading surface. The stage flexes to fill the reclaimed space. */
+.reader-immersive .reader-bar { display: none; }
 .reader-title {
   flex: 1;
   min-width: 0;
@@ -313,6 +318,16 @@ a { color: inherit; text-decoration: none; }
   color: var(--text);
   border: 1px solid var(--border);
 }
+.reader-select {
+  max-width: 150px;
+  font: inherit;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.reader-fonts { padding: 6px 10px; white-space: nowrap; }
 .reader-progress { color: var(--text-dim); font-size: 0.85rem; min-width: 3.5em; text-align: right; }
 .reader-nav { display: flex; gap: 6px; }
 .reader-nav .btn { padding: 6px 14px; font-size: 1.15rem; line-height: 1; }
